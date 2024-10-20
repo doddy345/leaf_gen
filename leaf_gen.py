@@ -5,9 +5,11 @@ from matplotlib.widgets import Button, Slider
 
 init_roundness = 1
 init_spikes = 0
-init_sa = 0.1
+init_sa = 0
 init_w = 1.0
 init_vein_length = 0.8
+init_num_veins = 5
+init_vein_wave = 0
 
 vein_steps = 10
 
@@ -19,7 +21,7 @@ def normalize(x):
 def get_r(t, roundness, s, sa):
     l = 1.0
     r = l / (np.abs(np.cos(t / 4)) + np.abs(np.sin(t / 4))) ** (1 / roundness)
-    r = r + sa * (np.sin(s * t) - 0.5 * np.cos(7 * t))
+    r = r + sa * np.abs(np.sin(s * t) - 0.5 * np.cos(7 * t))
 
     return normalize(r)
 
@@ -61,7 +63,7 @@ def get_side_vein(vein_y):
     vein_x = 0.8 * all_points_x[closest_point_idx]
 
     x = np.linspace(0, vein_x, vein_steps)
-    y = vein_y + 0.02 * np.sin(np.cos(vein_y * 7) + x * np.pi * 4)
+    y = vein_y + 0.02 * np.sin(np.cos(vein_y) + x * np.pi  * vein_wave_slider.val)
     return x, y
 
 def draw_small_vein(vein_y):
@@ -76,7 +78,6 @@ def draw_small_veins():
 
     for i in range(num_small_veins):
         vein_y = i * main_vein_slider.val / num_small_veins
-        print(vein_y)
         draw_small_vein(vein_y)
 
     fig.canvas.draw()
@@ -101,15 +102,16 @@ x, y = get_main_vein(init_vein_length)
 main_vein_line, = ax.plot(x, y, lw=1, color='brown')
 
 # adjust the main plot to make room for the sliders
-fig.subplots_adjust(left=0.5, bottom=0.25)
+fig.subplots_adjust(left=0.5, bottom=0.4)
 
 ax_roundness = fig.add_axes([0.1, 0.25, 0.0225, 0.63])
 ax_spikes = fig.add_axes([0.2, 0.25, 0.0225, 0.63])
 ax_sa = fig.add_axes([0.3, 0.25, 0.0225, 0.63])
 ax_w = fig.add_axes([0.4, 0.25, 0.0225, 0.63])
 
-ax_mv = fig.add_axes([0.2, 0.1, 0.63, 0.0225])
-ax_nv = fig.add_axes([0.2, 0.15, 0.63, 0.0225])
+ax_mv = fig.add_axes([0.2, 0.05, 0.63, 0.0225])
+ax_nv = fig.add_axes([0.2, 0.1, 0.63, 0.0225])
+ax_vw = fig.add_axes([0.2, 0.15, 0.63, 0.0225])
 
 roundness_slider = Slider(
     ax=ax_roundness,
@@ -166,7 +168,18 @@ num_veins_slider = Slider(
     label="num veins",
     valmin=1,
     valmax=50,
-    valinit=init_vein_length,
+    valinit=init_num_veins,
+    valstep=1,
+    orientation="horizontal"
+)
+
+
+vein_wave_slider = Slider(
+    ax=ax_vw,
+    label="vein waviness",
+    valmin=1,
+    valmax=12,
+    valinit=init_vein_wave,
     valstep=1,
     orientation="horizontal"
 )
@@ -177,6 +190,7 @@ sa_slider.on_changed(update)
 width_slider.on_changed(update)
 num_veins_slider.on_changed(update)
 main_vein_slider.on_changed(update)
+vein_wave_slider.on_changed(update)
 
 update(None)
 plt.show()
