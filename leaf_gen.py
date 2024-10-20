@@ -1,103 +1,97 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-wave_amt = 0.3
-num_waves = 4
+from matplotlib.widgets import Button, Slider
 
-# Between 0 and 1 - 0 being a straight line, 1 being a circle
-tubbiness = 0.5
+init_roundness = 1
+init_spikes = 0
+init_sa = 0.1
+init_w = 1.0
 
-shift = 0.6
+l = 1.0
 
-def plot_leaf():
-    t = np.linspace(0, np.pi, 100)
+def normalize(x):
+    return (x - np.min(x)) / (np.max(x) - np.min(x))
 
-    # A general wiggly sin wave
-    x_mod = np.sin(t * num_waves + np.pi)
+def get_leaf_side(roundness, l, s, sa, w):
+    t = np.linspace(0, np.pi, 1000)
 
-    # Include t, so it applies more in the middle of the leaf
-    x_mod_with_t = np.sin(t - np.pi * shift) * x_mod
+    r = l / (np.abs(np.cos(t / 4)) + np.abs(np.sin(t / 4))) ** (1 / roundness)
+    r = r + sa * (np.sin(s * t) - 0.5 * np.cos(7 * t))
 
-    x_mod_positive = np.abs(x_mod_with_t) * wave_amt
+    y = np.cos(t) * r
+    x = np.sin(t) * r
+    return normalize(x) * w, normalize(y)
 
-    # Parametric equations for a leaf shape
-    x = tubbiness * (((np.sin(t) * np.sin(t))) + x_mod_positive)
-    y = np.cos(t)
-
-    # Plot the leaf outline (both sides)
-    plt.plot(x, y, color='green')
-    plt.plot(-x, y, color='green')
-
-    #plt.plot(t, x_mod_with_t, color='blue')
-
-    plt.gca().set_aspect('equal')
-
-    # Show the leaf plot
-    plt.show()
-
-plot_leaf()
-
-
-
-
-# The parametrized function to be plotted
-def f(t, amplitude, frequency):
-    return amplitude * np.sin(2 * np.pi * frequency * t)
-
-t = np.linspace(0, 1, 1000)
-
-# Define initial parameters
-init_amplitude = 5
-init_frequency = 3
 
 # Create the figure and the line that we will manipulate
 fig, ax = plt.subplots()
-line, = ax.plot(t, f(t, init_amplitude, init_frequency), lw=2)
-ax.set_xlabel('Time [s]')
+
+x, y = get_leaf_side(init_roundness, l, init_spikes, init_sa, init_w)
+
+line, = ax.plot(x, y, lw=1, color='g')
+line2, = ax.plot(-x, y, lw=1, color='g')
 
 # adjust the main plot to make room for the sliders
-fig.subplots_adjust(left=0.25, bottom=0.25)
+fig.subplots_adjust(left=0.5, bottom=0.25)
 
-# Make a horizontal slider to control the frequency.
-axfreq = fig.add_axes([0.25, 0.1, 0.65, 0.03])
-freq_slider = Slider(
-    ax=axfreq,
-    label='Frequency [Hz]',
-    valmin=0.1,
-    valmax=30,
-    valinit=init_frequency,
-)
+ax_roundness = fig.add_axes([0.1, 0.25, 0.0225, 0.63])
+ax_spikes = fig.add_axes([0.2, 0.25, 0.0225, 0.63])
+ax_sa = fig.add_axes([0.3, 0.25, 0.0225, 0.63])
+ax_w = fig.add_axes([0.4, 0.25, 0.0225, 0.63])
 
-# Make a vertically oriented slider to control the amplitude
-axamp = fig.add_axes([0.1, 0.25, 0.0225, 0.63])
-amp_slider = Slider(
-    ax=axamp,
-    label="Amplitude",
-    valmin=0,
-    valmax=10,
-    valinit=init_amplitude,
+roundness_slider = Slider(
+    ax=ax_roundness,
+    label="roundness",
+    valmin=0.01,
+    valmax=1,
+    valinit=init_roundness,
+    valstep=0.01,
     orientation="vertical"
 )
 
+spikes_slider = Slider(
+    ax=ax_spikes,
+    label="spikes",
+    valmin=0,
+    valmax=100,
+    valinit=init_spikes,
+    valstep=2,
+    orientation="vertical"
+)
 
-# The function to be called anytime a slider's value changes
+sa_slider = Slider(
+    ax=ax_sa,
+    label="sa",
+    valmin=0,
+    valmax=0.1,
+    valinit=init_sa,
+    valstep=0.01,
+    orientation="vertical"
+)
+
+width_slider = Slider(
+    ax=ax_w,
+    label="width",
+    valmin=0.1,
+    valmax=1.0,
+    valinit=init_w,
+    valstep=0.01,
+    orientation="vertical"
+)
+
 def update(val):
-    line.set_ydata(f(t, amp_slider.val, freq_slider.val))
-    fig.canvas.draw_idle()
+    x, y = get_leaf_side(roundness_slider.val, l, spikes_slider.val, sa_slider.val, width_slider.val)
+    line.set_xdata(x)
+    line.set_ydata(y)
+    line2.set_xdata(-x)
+    line2.set_ydata(y)
+    fig.canvas.draw()
 
 
-# register the update function with each slider
-freq_slider.on_changed(update)
-amp_slider.on_changed(update)
-
-# Create a `matplotlib.widgets.Button` to reset the sliders to initial values.
-resetax = fig.add_axes([0.8, 0.025, 0.1, 0.04])
-button = Button(resetax, 'Reset', hovercolor='0.975')
-
-
-def reset(event):
-    freq_slider.reset()
-    amp_slider.reset()
-button.on_clicked(reset)
+roundness_slider.on_changed(update)
+spikes_slider.on_changed(update)
+sa_slider.on_changed(update)
+width_slider.on_changed(update)
 
 plt.show()
